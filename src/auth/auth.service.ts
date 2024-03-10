@@ -12,9 +12,10 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { MailerService } from 'src/mailer/mailer.service';
 
 import { encrypt } from 'src/lib/bcrypt';
-import { generateCode } from 'src/lib/speakeasy';
+import { generateCode, verify } from 'src/lib/speakeasy';
 
 import { SignupDto } from './dto/signup.dto';
+import { ConfirmEmailDto } from './dto/confirmEmail.dto';
 
 @Injectable()
 export class AuthService {
@@ -58,7 +59,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
     };
-    
+
     const token = this.JwtService.sign(payload, {
       expiresIn: '30d',
       secret: this.configService.get('JWT_SECRET'),
@@ -76,6 +77,35 @@ export class AuthService {
         firstname: user.firstname,
         email: user.email,
         status: user.state,
+      },
+    };
+  }
+
+  async confirmEmail(confirmEmailDto: ConfirmEmailDto) {
+    const { email, code } = confirmEmailDto;
+
+    const match = verify(code);
+    if (!match) throw new UnauthorizedException('Invalid/expired token');
+
+    const user = await this.prismaService.user.update({
+      where: {
+        email: 'vic@gmail.com',
+      },
+      data: {
+        state: 'active',
+      },
+    });
+
+    return {
+      message: 'Email confirmé avec success !',
+      user: {
+        id: user.id,
+        lastname: user.lastname,
+        firstname: user.firstname,
+        username: user.username,
+        email: user.email,
+        dateOfBirth: user.dateOfBirth,
+        status: user.state
       },
     };
   }
