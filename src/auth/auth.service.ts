@@ -16,6 +16,7 @@ import { generateCode, verify } from 'src/lib/speakeasy';
 
 import { SignupDto } from './dto/signup.dto';
 import { ConfirmEmailDto } from './dto/confirmEmail.dto';
+import { SendEmailDto } from './dto/sendEmail.dto';
 
 @Injectable()
 export class AuthService {
@@ -89,7 +90,7 @@ export class AuthService {
 
     const user = await this.prismaService.user.update({
       where: {
-        email: 'vic@gmail.com',
+        email: email,
       },
       data: {
         state: 'active',
@@ -108,5 +109,14 @@ export class AuthService {
         status: user.state
       },
     };
+  }
+
+  async resendEmail(sendEmailDto: SendEmailDto) {
+    const {email} = sendEmailDto;
+    const code = generateCode();
+    await this.mailService.sendSignupConfirmation(email, code);
+    return {
+      message: "Email envoyé avec success"
+    }
   }
 }

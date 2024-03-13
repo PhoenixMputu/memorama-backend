@@ -20,17 +20,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        JwtStrategy.extractJWTFromCookie,
         ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (req: RequestType) => {
+          if (req && req.cookies) return req.cookies['auth-cookie'];
+          return null;
+        },
       ]),
-      secretOrKey: configService.get('JWT_SECRET'),
+      secretOrKey: configService.get<string>('JWT_SECRET', { infer: true }),
       ignoreExpiration: false,
     });
-  }
-
-  private static extractJWTFromCookie(req: RequestType): string | null {
-    if (req && req.cookies) return req.cookies['auth-cookie'];
-    return null;
   }
 
   async validate(payload: Payload) {
