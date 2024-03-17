@@ -8,6 +8,7 @@ import { ConfirmEmailDto } from './dto/confirmEmail.dto';
 import { AuthService } from './auth.service';
 import { generateDate } from 'src/lib/functions';
 import { SendEmailDto } from './dto/sendEmail.dto';
+import { GoogleOAuthGuard } from './guard/google-oauth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -22,7 +23,6 @@ export class AuthController {
   async confirmEmail(
     @Body() confirmEmailDto: ConfirmEmailDto,
     @Res({ passthrough: true }) res: Response,
-    @Req() req: Request
   ) {
     try {
       const { token } = confirmEmailDto;
@@ -45,5 +45,23 @@ export class AuthController {
   @Post('resend-email')
   sendEmail(@Body() sendEmailDto: SendEmailDto) {
     return this.authService.resendEmail(sendEmailDto)
+  }
+
+  @Get('google-auth')
+  @UseGuards(GoogleOAuthGuard)
+  async googleAuth() {}
+
+  @Get('callback')
+  @UseGuards(GoogleOAuthGuard)
+  async googleAuthRedirect(@Req() req: any, @Res() res: any | Response) {
+    try {
+      const result = await this.authService.googleAccount(req);
+      res.cookie('email', result.email);
+      res.cookie('auth-cookie', result.token);
+      res.redirect('http://localhost:3000');
+    } catch (error) {
+      console.error('Erreur lors de la redirection Google OAuth:', error);
+      res.status(500).send('Cette adresse email a déjà un compte avec un mot de passe. Veuillez vous connecter avec votre mot de passe. <a href="http://localhost:8000/signin">Se connecter</a>');
+    }
   }
 }

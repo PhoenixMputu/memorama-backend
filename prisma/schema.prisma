@@ -21,6 +21,7 @@ model User {
   firstname   String    @db.VarChar(20)
   username    String?   @db.VarChar(30)
   email       String    @unique @db.VarChar(100)
+  photo       String?   @db.Text()
   state       State     @default(pending)
   password    String?   @db.VarChar(255)
   dateOfBirth DateTime? @db.Date()

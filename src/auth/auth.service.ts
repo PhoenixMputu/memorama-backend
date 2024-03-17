@@ -119,4 +119,78 @@ export class AuthService {
       message: "Email envoyé avec success"
     }
   }
+
+  async googleAccount(req: Request | any) {
+    const { email, firstName, lastName, picture } = req.user;
+
+    const existsUserWithPassword = await this.prismaService.user.findUnique({
+      where: {
+        email,
+        NOT: {
+          password: null,
+        },
+      },
+    });
+
+    if (existsUserWithPassword)
+      throw new ConflictException('L\'email est déjà associé à un compte');
+
+    const existsUserWithoutPassword = await this.prismaService.user.findUnique({
+      where: {
+        email,
+        password: null,
+      },
+    });
+
+    if (existsUserWithoutPassword) {
+      const user = await this.prismaService.user.findFirst({
+        where: {
+          email: email,
+        },
+        select: {
+          id: true,
+          lastname: true,
+        },
+      });
+
+      const payload = {
+        sub: user?.id,
+        email: email,
+      };
+      const token = this.JwtService.sign(payload, {
+        expiresIn: '30d',
+        secret: this.configService.get('JWT_SECRET'),
+      });
+
+      return {
+        token,
+        message: 'Compte crée avec success',
+        email,
+      };
+    }
+
+    const user = await this.prismaService.user.create({
+      data: {
+        email: email.toLowerCase(),
+        lastname: lastName.charAt(0).toUpperCase() + lastName.slice(1),
+        firstname: firstName.charAt(0).toUpperCase() + firstName.slice(1),
+        state: 'active',
+      },
+    });
+
+    const payload = {
+      sub: user?.id,
+      email: email,
+    };
+    const token = this.JwtService.sign(payload, {
+      expiresIn: '30d',
+      secret: this.configService.get('JWT_SECRET'),
+    });
+
+    return {
+      token,
+      message: 'Compte crée avec success',
+      email,
+    };
+  }
 }
