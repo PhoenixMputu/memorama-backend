@@ -27,7 +27,12 @@ export class AuthController {
     try {
       const { token } = confirmEmailDto;
       const result = await this.authService.confirmEmail(confirmEmailDto);
-
+      res.cookie('email', result.user.email, {
+        expires: generateDate(30),
+        httpOnly: true,
+        secure: false,
+        sameSite: false,
+      });
       res.cookie('auth-cookie', token, {
         expires: generateDate(30),
         httpOnly: true,
@@ -56,8 +61,18 @@ export class AuthController {
   async googleAuthRedirect(@Req() req: any, @Res() res: any | Response) {
     try {
       const result = await this.authService.googleAccount(req);
-      res.cookie('email', result.email);
-      res.cookie('auth-cookie', result.token);
+      res.cookie('email', result.email, {
+        expires: generateDate(30),
+        httpOnly: true,
+        secure: false,
+        sameSite: false,
+      });
+      res.cookie('auth-cookie', result.token, {
+        expires: generateDate(30),
+        httpOnly: true,
+        secure: false,
+        sameSite: false,
+      });
       res.redirect('http://localhost:3000');
     } catch (error) {
       console.error('Erreur lors de la redirection Google OAuth:', error);

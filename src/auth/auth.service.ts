@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-
+import * as speakeasy from 'speakeasy';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 
@@ -85,8 +85,15 @@ export class AuthService {
   async confirmEmail(confirmEmailDto: ConfirmEmailDto) {
     const { email, code } = confirmEmailDto;
 
-    const match = verify(code);
-    if (!match) throw new UnauthorizedException('Invalid/expired token');
+    const match = speakeasy.totp.verify({
+      secret: this.configService.get('JWT_SECRET')!,
+      digits: 5,
+      step: 60 * 15,
+      encoding: 'base32',
+      token: code,
+    });
+
+    if (!match) throw new Error('invalid code');
 
     const user = await this.prismaService.user.update({
       where: {
@@ -106,18 +113,18 @@ export class AuthService {
         username: user.username,
         email: user.email,
         dateOfBirth: user.dateOfBirth,
-        status: user.state
+        status: user.state,
       },
     };
   }
 
   async resendEmail(sendEmailDto: SendEmailDto) {
-    const {email} = sendEmailDto;
+    const { email } = sendEmailDto;
     const code = generateCode();
     await this.mailService.sendSignupConfirmation(email, code);
     return {
-      message: "Email envoyé avec success"
-    }
+      message: 'Email envoyé avec success',
+    };
   }
 
   async googleAccount(req: Request | any) {
@@ -133,7 +140,7 @@ export class AuthService {
     });
 
     if (existsUserWithPassword)
-      throw new ConflictException('L\'email est déjà associé à un compte');
+      throw new ConflictException("L'email est déjà associé à un compte");
 
     const existsUserWithoutPassword = await this.prismaService.user.findUnique({
       where: {
