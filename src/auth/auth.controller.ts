@@ -126,6 +126,7 @@ export class AuthController {
     return this.authService.forgetPassword(sendEmailDto);
   }
 
+  @UseGuards(AuthGuard('jwt'))
   @Post('reset-password')
   async changePassword(
     @Body() resetPasswordDto: ResetPasswordDto,
