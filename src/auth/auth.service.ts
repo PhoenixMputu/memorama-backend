@@ -11,12 +11,14 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { MailerService } from 'src/mailer/mailer.service';
 
-import { encrypt } from 'src/lib/bcrypt';
-import { generateCode, verify } from 'src/lib/speakeasy';
+import { encrypt, compare } from 'src/lib/bcrypt';
+import { generateCode } from 'src/lib/speakeasy';
 
 import { SignupDto } from './dto/signup.dto';
 import { ConfirmEmailDto } from './dto/confirmEmail.dto';
 import { SendEmailDto } from './dto/sendEmail.dto';
+import { SigninDto } from './dto/signin.dto';
+import { ResetPasswordDto } from './dto/resetPassword.dto';
 
 @Injectable()
 export class AuthService {
@@ -199,5 +201,93 @@ export class AuthService {
       message: 'Compte crée avec success',
       email,
     };
+  }
+
+  async signin(signinDto: SigninDto) {
+    const {email, password} = signinDto;
+
+    const user = await this.prismaService.user.findUnique({
+      where: { email, state: 'active' },
+    });
+    
+    if (!user) throw new NotFoundException("Utilisateur non trouvé");
+    if (!user.password) throw new ConflictException("Connetez-vous via Google");
+
+    const match = await compare(password, user.password);
+    if (!match) throw new UnauthorizedException('Le mot de passe ne correspond pas');
+    const payload = {
+      sub: user.id,
+      email: user.email,
+    };
+    const token = this.JwtService.sign(payload, {
+      expiresIn: '30d',
+      secret: this.configService.get('JWT_SECRET'),
+    });
+
+    return {
+      token,
+      message: 'User connected!',
+      user: {
+        id: user.id,
+        lastname: user.lastname,
+        firstname: user.firstname,
+        email: user.email,
+        status: user.state,
+      },
+    };
+  }
+
+  async forgetPassword(sendEmailDto: SendEmailDto) {
+    const {email} = sendEmailDto;
+
+    const user = await this.prismaService.user.findUnique({
+      where: { email, state: 'active' },
+    });
+
+    if (!user) throw new NotFoundException("Utilisateur non trouvé");
+    if (!user.password) throw new ConflictException("Connetez-vous via Google");
+
+    const payload = {
+      sub: user.id,
+      email: user.email,
+    };
+    const token = this.JwtService.sign(payload, {
+      expiresIn: '1d',
+      secret: this.configService.get('JWT_SECRET'),
+    });
+    const url = `http://localhost:3000/new-password?email=${email}&token=${token}`;
+
+    await this.mailService.sendLinkNewPassword(email, url);
+
+    return {
+      mesage: 'Email envoyer avec success !'
+    }
+  }
+
+  async changePassword(resetPasswordDto: ResetPasswordDto) {
+    const { email, password, token } = resetPasswordDto;
+
+    const user = await this.prismaService.user.findUnique({
+      where: { email, state: 'active' },
+    });
+
+    if (!user) throw new NotFoundException("Utilisateur non trouvé");
+    if (!user.password) throw new ConflictException("Connetez-vous via Google");
+    const hashedPassword = await encrypt(password);
+
+    const endUser = await this.prismaService.user.update({
+      where: {
+        email: email,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    return {
+      token,
+      email: endUser.email,
+      message: 'Mot de passe changé avec succes'
+    }
   }
 }

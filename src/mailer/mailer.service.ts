@@ -91,4 +91,69 @@ export class MailerService {
       `,
     });
   }
+
+  async sendLinkNewPassword(
+    email: string,
+    url: string
+  ) {
+    (await this.transporter()).sendMail({
+      from: '"No Reply" <app@localhost.com>',
+      to: email,
+      subject: "Validation d'inscription",
+      html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Email Verification</title>
+          <style>
+            body {
+              font-family: 'Arial', sans-serif;
+              text-align: center;
+              margin: 20px;
+            }
+        
+            h1 {
+              color: #3498db;
+            }
+        
+            p {
+              color: #555;
+            }
+        
+            .verification-link {
+              display: inline-block;
+              padding: 10px 20px;
+              margin: 15px 0;
+              font-size: 16px;
+              color: #fff;
+              text-decoration: none;
+              background-color: #3498db;
+              border-radius: 5px;
+            }
+
+            .link {
+              text-decoration: none;
+              color: #3498db;
+            }
+
+          </style>
+        </head>
+        
+        <body>
+          <h1>Changement de mot de passe</h1>
+          <p>Cher ${email},</p>
+          <p>Nous avons reçu une demande de réinitialisation de votre mot de passe. Veuillez cliquer sur le lien ci-dessous pour procéder au changement de mot de passe :</p>
+          <a href="${url}" class="button">Changer de mot de passe</a>
+          <p>Le lien expire dans 24 heures</p>
+          <p>Si vous n\'avez pas initié cette demande, veuillez ignorer cet e-mail.</p>
+          <p>Merci,</p>
+        </body>
+        
+        </html>      
+      `,
+    });
+  }
 }
