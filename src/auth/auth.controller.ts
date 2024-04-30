@@ -3,13 +3,12 @@ import {
   Controller,
   Get,
   Post,
-  Query,
   Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 
 import { SignupDto } from './dto/signup.dto';
 import { ConfirmEmailDto } from './dto/confirmEmail.dto';
@@ -20,6 +19,7 @@ import { SendEmailDto } from './dto/sendEmail.dto';
 import { GoogleOAuthGuard } from './guard/google-oauth.guard';
 import { SigninDto } from './dto/signin.dto';
 import { ResetPasswordDto } from './dto/resetPassword.dto';
+import { ChangePasswordDto } from './dto/changePassword.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -128,12 +128,12 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('reset-password')
-  async changePassword(
+  async resetPassword(
     @Body() resetPasswordDto: ResetPasswordDto,
     @Res({ passthrough: true }) res: Response
   ) {
     try {
-      const result = await this.authService.changePassword(resetPasswordDto);
+      const result = await this.authService.resetPassword(resetPasswordDto);
       res.cookie('email', result.email, {
         expires: generateDate(30),
         httpOnly: true,
@@ -150,6 +150,25 @@ export class AuthController {
     } catch (error) {
       console.log('Erreur', error);
       res.status(error.response.statusCode).send(error.message);
+    }
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('change-password')
+  changePassword(@Body() changePasswordDto: ChangePasswordDto) {
+    return this.authService.changePassword(changePasswordDto);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('account')
+  async getProfile(@Req() req: Request, @Res() res: Response) {
+    try {
+      const emailCookie = req.cookies['email'];
+      const result = await this.authService.getProfile(emailCookie);
+      res.json(result)
+    } catch (error) {
+      console.log('Erreur', error);
+      res.status(500).send(error.message);
     }
   }
 }

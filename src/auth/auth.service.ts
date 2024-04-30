@@ -19,6 +19,7 @@ import { ConfirmEmailDto } from './dto/confirmEmail.dto';
 import { SendEmailDto } from './dto/sendEmail.dto';
 import { SigninDto } from './dto/signin.dto';
 import { ResetPasswordDto } from './dto/resetPassword.dto';
+import { ChangePasswordDto } from './dto/changePassword.dto';
 
 @Injectable()
 export class AuthService {
@@ -264,7 +265,7 @@ export class AuthService {
     }
   }
 
-  async changePassword(resetPasswordDto: ResetPasswordDto) {
+  async resetPassword(resetPasswordDto: ResetPasswordDto) {
     const { email, password, token } = resetPasswordDto;
 
     const user = await this.prismaService.user.findUnique({
@@ -275,7 +276,7 @@ export class AuthService {
     if (!user.password) throw new ConflictException("Connetez-vous via Google");
     const hashedPassword = await encrypt(password);
 
-    const endUser = await this.prismaService.user.update({
+    const updateUser = await this.prismaService.user.update({
       where: {
         email: email,
       },
@@ -286,8 +287,55 @@ export class AuthService {
 
     return {
       token,
-      email: endUser.email,
+      email: updateUser.email,
       message: 'Mot de passe changé avec succes'
+    }
+  }
+
+  async changePassword(changePasswordDto: ChangePasswordDto) {
+    const { email, password, newPassword } = changePasswordDto;
+
+    const user = await this.prismaService.user.findUnique({
+      where: { email, state: 'active' },
+    });
+
+    if (!user) throw new NotFoundException("Utilisateur non trouvé");
+    if (!user.password) throw new ConflictException("Connetez-vous via Google");
+    if (user.password !== password) throw new UnauthorizedException("Mot de passe incorrect");
+
+    const hashedPassword = await encrypt(password);
+    const updateUser = await this.prismaService.user.update({
+      where: {
+        email: email,
+      },
+      data: {
+        password: hashedPassword,
+      },
+    });
+
+    return {
+      email: updateUser.email,
+      message: 'Mot de passe changé avec succes'
+    }
+  }
+
+  async getProfile(email: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { email, state: 'active' },
+    });
+    if (!user) throw new NotFoundException("Utilisateur non trouvé");
+
+    return {
+      message: "Voici vos information",
+      user: {
+        id: user.id,
+        lastname: user.lastname,
+        firstname: user.firstname,
+        email: user.email,
+        username: user.username,
+        photo: user.photo,
+        birthDay: user.dateOfBirth,
+      }
     }
   }
 }
